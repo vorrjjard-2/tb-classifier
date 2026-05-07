@@ -6,6 +6,9 @@ __pycache__/
 # C extensions
 *.so
 
+# Claude Related
+CLAUDE.md
+
 # Distribution / packaging
 .Python
 build/
@@ -216,3 +219,9 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Project-specific
+data/raw/
+data/processed/
+outputs/
+experiments/results/

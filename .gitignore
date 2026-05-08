@@ -9,6 +9,14 @@ __pycache__/
 # Claude Related
 CLAUDE.md
 
+# Data Loading
+data/
+
+# Other Stuff
+uv/
+.DS_Store
+uv.lock
+
 # Distribution / packaging
 .Python
 build/

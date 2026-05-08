@@ -3,7 +3,36 @@ name = "tb-classifier"
 version = "0.1.0"
 description = "Custom TB detection classifier for the ALIVE implementation"
 requires-python = ">=3.10"
-dependencies = []
+dependencies = [
+    "torch",
+    "torchvision",
+    "lightning",
+    "torchmetrics",
+    "albumentationsx",
+    "opencv-python-headless",
+    "pillow",
+    "pydicom",
+    "numpy",
+    "pandas",
+    "scikit-learn",
+    "pyyaml",
+    "tensorboard",
+    "wandb",
+    "matplotlib",
+    "tqdm",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "ruff",
+]
+notebooks = [
+    "jupyter",
+    "ipykernel",
+    "ipywidgets",
+    "seaborn",
+]
 
 [build-system]
 requires = ["hatchling"]

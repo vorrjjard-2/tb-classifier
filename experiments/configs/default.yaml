@@ -1,0 +1,8 @@
+name: default
+
+data:
+  root: data/TBX11K
+  image_size: 512
+  batch_size: 16
+  num_workers: 4
+  pin_memory: true

@@ -1,2 +1,82 @@
+"""Training entry point: fine-tune a TB classifier from a YAML config.
+
+Usage:
+    uv run python scripts/train.py --config experiments/configs/default.yaml
+    uv run python scripts/train.py --config experiments/configs/default.yaml --fast-dev-run
+"""
+
+from __future__ import annotations
+
+import argparse
+from pathlib import Path
+
+import lightning as L
+from lightning.pytorch.callbacks import LearningRateMonitor, ModelCheckpoint
+from lightning.pytorch.loggers import WandbLogger
+
+from tb_classifier.config import load_config
+from tb_classifier.data import build_dataloaders
+from tb_classifier.training import TBLitModule
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--config",
+        default="experiments/configs/default.yaml",
+        help="Path to YAML run config.",
+    )
+    parser.add_argument(
+        "--fast-dev-run",
+        action="store_true",
+        help="Run a single train+val batch for wiring sanity (no W&B run).",
+    )
+    args = parser.parse_args()
+
+    cfg = load_config(args.config)
+    L.seed_everything(cfg.training.seed, workers=True)
+
+    train_loader, val_loader = build_dataloaders(cfg.data)
+    module = TBLitModule(cfg.model, cfg.training)
+
+    run_name = cfg.training.wandb_run_name or cfg.name
+    run_dir = Path(cfg.training.log_dir) / run_name
+    ckpt_dir = run_dir / "checkpoints"
+
+    logger = False
+    if not args.fast_dev_run:
+        run_dir.mkdir(parents=True, exist_ok=True)
+        logger = WandbLogger(
+            project=cfg.training.wandb_project,
+            name=run_name,
+            save_dir=str(run_dir),
+            config={"config_path": str(args.config), **cfg.__dict__},
+        )
+
+    callbacks = [
+        ModelCheckpoint(
+            dirpath=str(ckpt_dir),
+            filename="epoch={epoch:02d}-auroc={val/auroc_macro:.3f}",
+            monitor="val/auroc_macro",
+            mode="max",
+            save_top_k=2,
+            auto_insert_metric_name=False,
+        ),
+    ]
+    if logger:
+        callbacks.append(LearningRateMonitor(logging_interval="epoch"))
+
+    trainer = L.Trainer(
+        max_epochs=cfg.training.epochs,
+        precision=cfg.training.precision,
+        logger=logger,
+        callbacks=callbacks,
+        fast_dev_run=args.fast_dev_run,
+        log_every_n_steps=20,
+        default_root_dir=str(run_dir),
+    )
+    trainer.fit(module, train_dataloaders=train_loader, val_dataloaders=val_loader)
+
+
 if __name__ == "__main__":
-    pass
+    main()

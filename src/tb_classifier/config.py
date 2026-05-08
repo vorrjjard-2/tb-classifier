@@ -3,14 +3,12 @@
 Each experiment is described by a single YAML file under
 ``experiments/configs/``. Load it with :func:`load_config` to get a typed
 :class:`Config` object that can be passed around (or unpacked into
-``build_dataloaders`` etc.).
-
-The schema is intentionally narrow for now (data only); add nested
-sections (model, training, optim) as the project grows.
+``build_dataloaders``, ``build_classifier``, etc.).
 """
 
 from __future__ import annotations
 
+import typing
 from dataclasses import dataclass, field, fields, is_dataclass
 from pathlib import Path
 from typing import Any
@@ -28,12 +26,34 @@ class DataConfig:
 
 
 @dataclass
+class ModelConfig:
+    arch: str = "resnet50"
+    num_classes: int = 3
+    pretrained: bool = True
+
+
+@dataclass
+class TrainingConfig:
+    epochs: int = 30
+    lr: float = 1e-4
+    weight_decay: float = 1e-4
+    scheduler: str = "cosine"  # "cosine" | "none"
+    precision: str = "32"  # "32" | "16-mixed" | "bf16-mixed"
+    seed: int = 42
+    log_dir: str = "experiments/results"
+    wandb_project: str = "tb-classifier"
+    wandb_run_name: str | None = None
+
+
+@dataclass
 class Config:
     name: str = "default"
     data: DataConfig = field(default_factory=DataConfig)
+    model: ModelConfig = field(default_factory=ModelConfig)
+    training: TrainingConfig = field(default_factory=TrainingConfig)
 
 
-def _instantiate(cls, raw: dict[str, Any]):
+def _instantiate(cls: type, raw: dict[str, Any]):
     """Build a (possibly nested) dataclass from a plain dict, rejecting unknown keys."""
     if not is_dataclass(cls):
         return raw
@@ -41,13 +61,15 @@ def _instantiate(cls, raw: dict[str, Any]):
     unknown = set(raw) - set(valid)
     if unknown:
         raise ValueError(f"Unknown keys for {cls.__name__}: {sorted(unknown)}")
+    hints = typing.get_type_hints(cls)
     kwargs: dict[str, Any] = {}
-    for name, f in valid.items():
+    for name in valid:
         if name not in raw:
             continue
         value = raw[name]
-        if is_dataclass(f.type) and isinstance(value, dict):
-            kwargs[name] = _instantiate(f.type, value)
+        ftype = hints.get(name)
+        if is_dataclass(ftype) and isinstance(value, dict):
+            kwargs[name] = _instantiate(ftype, value)
         else:
             kwargs[name] = value
     return cls(**kwargs)
@@ -59,13 +81,5 @@ def load_config(path: str | Path) -> Config:
         raw = yaml.safe_load(f) or {}
     if not isinstance(raw, dict):
         raise ValueError(f"Config at {path} must be a YAML mapping at the top level")
-
-    data_raw = raw.get("data", {})
-    if not isinstance(data_raw, dict):
-        raise ValueError("'data' section must be a mapping")
-    data_cfg = _instantiate(DataConfig, data_raw)
-
-    return Config(
-        name=raw.get("name", path.stem),
-        data=data_cfg,
-    )
+    raw.setdefault("name", path.stem)
+    return _instantiate(Config, raw)

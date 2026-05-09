@@ -1,9 +1,5 @@
 """Albumentations pipelines for TB chest X-ray classification.
 
-Both pipelines are bbox-aware so the same dataset record (image + COCO bboxes
-+ category labels) flows through unchanged. Bboxes use COCO format
-(``[x, y, w, h]``) to match the source JSONs.
-
 ImageNet mean/std is used so the pipeline is drop-in compatible with
 ImageNet-pretrained backbones; swap to dataset stats if training from scratch.
 """
@@ -15,15 +11,6 @@ from albumentations.pytorch import ToTensorV2
 
 IMAGENET_MEAN = (0.485, 0.456, 0.406)
 IMAGENET_STD = (0.229, 0.224, 0.225)
-
-
-def _bbox_params() -> A.BboxParams:
-    return A.BboxParams(
-        coord_format="coco",
-        label_fields=["bbox_labels"],
-        min_visibility=0.3,
-        min_area=1.0,
-    )
 
 
 def get_train_transforms(image_size: int = 512) -> A.Compose:
@@ -51,8 +38,7 @@ def get_train_transforms(image_size: int = 512) -> A.Compose:
             A.GaussNoise(p=0.2),
             A.Normalize(mean=IMAGENET_MEAN, std=IMAGENET_STD),
             ToTensorV2(),
-        ],
-        bbox_params=_bbox_params(),
+        ]
     )
 
 
@@ -68,6 +54,5 @@ def get_val_transforms(image_size: int = 512) -> A.Compose:
             ),
             A.Normalize(mean=IMAGENET_MEAN, std=IMAGENET_STD),
             ToTensorV2(),
-        ],
-        bbox_params=_bbox_params(),
+        ]
     )

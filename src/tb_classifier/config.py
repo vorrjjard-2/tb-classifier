@@ -18,7 +18,7 @@ import yaml
 
 @dataclass
 class DataConfig:
-    root: str = "data/TBX11K"
+    root: str = "data/tbx11k-classification-3-class-seed-42"
     image_size: int = 512
     batch_size: int = 16
     num_workers: int = 4

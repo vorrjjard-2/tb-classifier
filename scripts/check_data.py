@@ -11,7 +11,7 @@ import argparse
 from collections import Counter
 
 from tb_classifier.config import load_config
-from tb_classifier.data import TBDataset, build_dataloaders
+from tb_classifier.data import TBDataset, build_dataloaders, build_test_loader
 
 
 def main() -> None:
@@ -29,26 +29,23 @@ def main() -> None:
 
     train_ds = TBDataset(cfg.data.root, split="train")
     val_ds = TBDataset(cfg.data.root, split="val")
+    test_ds = TBDataset(cfg.data.root, split="test")
     print(f"  train records: {len(train_ds):>5}   class counts: {train_ds.class_counts()}")
     print(f"  val   records: {len(val_ds):>5}   class counts: {val_ds.class_counts()}")
+    print(f"  test  records: {len(test_ds):>5}   class counts: {test_ds.class_counts()}")
 
     train_loader, val_loader = build_dataloaders(cfg.data)
+    test_loader = build_test_loader(cfg.data)
 
-    for split, loader in (("train", train_loader), ("val", val_loader)):
+    for split, loader in (("train", train_loader), ("val", val_loader), ("test", test_loader)):
         batch = next(iter(loader))
         img = batch["image"]
-        bbox_counts = [len(b) for b in batch["bboxes"]]
         label_counts = Counter(batch["label"].tolist())
         print(f"\n[{split}] batch:")
         print(f"  image tensor: shape={tuple(img.shape)} dtype={img.dtype} "
               f"min={img.min():.3f} max={img.max():.3f}")
         print(f"  labels: {batch['label'].tolist()}  histogram={dict(label_counts)}")
-        print(f"  bboxes per sample: {bbox_counts}")
-        for fn, boxes, cats in zip(batch["file_name"], batch["bboxes"], batch["bbox_labels"]):
-            if boxes:
-                print(f"    {fn}: {len(boxes)} box(es), categories={cats}")
-                print(f"      first bbox (coco x,y,w,h): {boxes[0]}")
-                break
+        print(f"  sample file: {batch['file_name'][0]}")
 
 
 if __name__ == "__main__":

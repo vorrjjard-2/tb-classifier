@@ -1,7 +1,7 @@
 name: default
 
 data:
-  root: data/TBX11K
+  root: data/tbx11k-classification-3-class-seed-42
   image_size: 512
   batch_size: 16
   num_workers: 4

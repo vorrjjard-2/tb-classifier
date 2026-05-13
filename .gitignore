@@ -10,7 +10,7 @@ __pycache__/
 CLAUDE.md
 
 # Data Loading
-data/
+/data/
 
 # Other Stuff
 uv/

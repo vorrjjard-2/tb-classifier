@@ -3,7 +3,7 @@ name: resnet18_colab
 data:
   root: data/tbx11k-classification-3-class-seed-42
   image_size: 512
-  batch_size: 32
+  batch_size: 16
   num_workers: 4
   pin_memory: true
 

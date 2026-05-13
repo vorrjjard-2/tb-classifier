@@ -14,16 +14,25 @@ from ..utils.metrics import build_metrics, flatten_metrics
 
 
 class TBLitModule(L.LightningModule):
-    def __init__(self, model_cfg: ModelConfig, training_cfg: TrainingConfig):
+    def __init__(
+        self,
+        model_cfg: ModelConfig,
+        training_cfg: TrainingConfig,
+        class_weights: torch.Tensor | None = None,
+    ):
         super().__init__()
         # Hyperparameters end up in the W&B run config + checkpoint payload.
-        self.save_hyperparameters({"model": vars(model_cfg), "training": vars(training_cfg)})
+        hparams: dict = {"model": vars(model_cfg), "training": vars(training_cfg)}
+        if class_weights is not None:
+            hparams["class_weights"] = class_weights.tolist()
+        self.save_hyperparameters(hparams)
 
         self.model_cfg = model_cfg
         self.training_cfg = training_cfg
 
         self.model = build_classifier(model_cfg)
-        self.loss_fn = nn.CrossEntropyLoss()
+        # CrossEntropyLoss registers `weight` as a buffer; Lightning moves it with the module.
+        self.loss_fn = nn.CrossEntropyLoss(weight=class_weights)
 
         self.train_metrics = build_metrics(model_cfg.num_classes, prefix="train/")
         self.val_metrics = build_metrics(model_cfg.num_classes, prefix="val/")

@@ -1,14 +1,14 @@
-name: default
+name: resnet18_colab
 
 data:
   root: data/tbx11k-classification-3-class-seed-42
   image_size: 512
-  batch_size: 16
+  batch_size: 32
   num_workers: 4
   pin_memory: true
 
 model:
-  arch: resnet50
+  arch: resnet18
   num_classes: 3
   pretrained: true
 
@@ -17,9 +17,9 @@ training:
   lr: 1.0e-4
   weight_decay: 1.0e-4
   scheduler: cosine
-  precision: "32"
+  precision: bf16-mixed
   seed: 42
-  class_weights: balanced  # "balanced" → inverse-frequency from train counts; null → unweighted
-  log_dir: experiments/results
+  class_weights: balanced
+  log_dir: /content/drive/MyDrive/tb-classifier-runs
   wandb_project: tb-classifier
-  wandb_run_name: null
+  wandb_run_name: resnet18-colab-001

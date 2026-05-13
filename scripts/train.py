@@ -11,12 +11,30 @@ import argparse
 from pathlib import Path
 
 import lightning as L
+import torch
 from lightning.pytorch.callbacks import LearningRateMonitor, ModelCheckpoint
 from lightning.pytorch.loggers import WandbLogger
 
-from tb_classifier.config import load_config
+from tb_classifier.config import TrainingConfig, load_config
 from tb_classifier.data import build_dataloaders
 from tb_classifier.training import TBLitModule
+
+
+def _compute_class_weights(cfg: TrainingConfig, train_loader) -> torch.Tensor | None:
+    """Inverse-frequency weights normalized so the mean weight is 1."""
+    if cfg.class_weights is None:
+        return None
+    if cfg.class_weights != "balanced":
+        raise ValueError(
+            f"Unsupported class_weights mode: {cfg.class_weights!r} (expected 'balanced' or null)"
+        )
+    counts = train_loader.dataset.class_counts()
+    total = sum(counts.values())
+    n_classes = len(counts)
+    return torch.tensor(
+        [total / (n_classes * counts[i]) for i in range(n_classes)],
+        dtype=torch.float32,
+    )
 
 
 def main() -> None:
@@ -37,7 +55,10 @@ def main() -> None:
     L.seed_everything(cfg.training.seed, workers=True)
 
     train_loader, val_loader = build_dataloaders(cfg.data)
-    module = TBLitModule(cfg.model, cfg.training)
+    class_weights = _compute_class_weights(cfg.training, train_loader)
+    if class_weights is not None:
+        print(f"  class_weights (balanced): {class_weights.tolist()}")
+    module = TBLitModule(cfg.model, cfg.training, class_weights=class_weights)
 
     run_name = cfg.training.wandb_run_name or cfg.name
     run_dir = Path(cfg.training.log_dir) / run_name

@@ -40,6 +40,8 @@ class TrainingConfig:
     scheduler: str = "cosine"  # "cosine" | "none"
     precision: str = "32"  # "32" | "16-mixed" | "bf16-mixed"
     seed: int = 42
+    # "balanced" → inverse-frequency from train counts; null → unweighted
+    class_weights: str | None = "balanced"
     log_dir: str = "experiments/results"
     wandb_project: str = "tb-classifier"
     wandb_run_name: str | None = None

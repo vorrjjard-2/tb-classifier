@@ -19,7 +19,7 @@ from torchmetrics.classification import (
     MulticlassSpecificity,
 )
 
-CLASS_NAMES: tuple[str, ...] = ("healthy", "sick", "tb")
+CLASS_NAMES: tuple[str, ...] = ("healthy", "sick-non-tb", "tb")
 
 
 def build_metrics(num_classes: int = 3, prefix: str = "") -> MetricCollection:

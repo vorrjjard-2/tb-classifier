@@ -19,6 +19,7 @@ def build_dataloaders(
     batch_size: int | None = None,
     num_workers: int | None = None,
     pin_memory: bool | None = None,
+    augment: bool | None = None,
 ) -> tuple[DataLoader, DataLoader]:
     """Build train/val loaders.
 
@@ -32,8 +33,10 @@ def build_dataloaders(
     batch_size = batch_size if batch_size is not None else cfg.batch_size
     num_workers = num_workers if num_workers is not None else cfg.num_workers
     pin_memory = pin_memory if pin_memory is not None else cfg.pin_memory
+    augment = augment if augment is not None else cfg.augment
 
-    train_ds = TBDataset(root, split="train", transform=get_train_transforms(image_size))
+    train_tf = get_train_transforms(image_size) if augment else get_val_transforms(image_size)
+    train_ds = TBDataset(root, split="train", transform=train_tf)
     val_ds = TBDataset(root, split="val", transform=get_val_transforms(image_size))
 
     train_loader = DataLoader(

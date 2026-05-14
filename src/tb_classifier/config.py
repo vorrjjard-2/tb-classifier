@@ -23,6 +23,9 @@ class DataConfig:
     batch_size: int = 16
     num_workers: int = 4
     pin_memory: bool = True
+    # When False, the train split uses the val pipeline (resize + pad + normalize only),
+    # disabling all random augmentations. Val/test are deterministic regardless.
+    augment: bool = True
 
 
 @dataclass

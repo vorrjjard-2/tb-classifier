@@ -10,9 +10,21 @@ from .backbone import build_backbone
 
 
 class TBClassifier(nn.Module):
-    def __init__(self, arch: str = "resnet50", num_classes: int = 3, pretrained: bool = True):
+    def __init__(
+        self,
+        arch: str = "resnet50",
+        num_classes: int = 3,
+        pretrained: bool = True,
+        keep_stages: int = 4,
+        use_flipr: bool = False,
+    ):
         super().__init__()
-        self.backbone, feat_dim = build_backbone(arch=arch, pretrained=pretrained)
+        self.backbone, feat_dim = build_backbone(
+            arch=arch,
+            pretrained=pretrained,
+            keep_stages=keep_stages,
+            use_flipr=use_flipr,
+        )
         self.head = nn.Linear(feat_dim, num_classes)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -20,4 +32,10 @@ class TBClassifier(nn.Module):
 
 
 def build_classifier(cfg: ModelConfig) -> TBClassifier:
-    return TBClassifier(arch=cfg.arch, num_classes=cfg.num_classes, pretrained=cfg.pretrained)
+    return TBClassifier(
+        arch=cfg.arch,
+        num_classes=cfg.num_classes,
+        pretrained=cfg.pretrained,
+        keep_stages=cfg.keep_stages,
+        use_flipr=cfg.use_flipr,
+    )

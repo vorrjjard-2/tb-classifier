@@ -20,6 +20,8 @@ dependencies = [
     "wandb",
     "matplotlib",
     "tqdm",
+    "seaborn>=0.13.2",
+    "einops>=0.8.2",
 ]
 
 [dependency-groups]

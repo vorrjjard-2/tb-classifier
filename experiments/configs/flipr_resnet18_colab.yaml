@@ -1,0 +1,27 @@
+name: flipr_resnet18_colab
+
+data:
+  root: data/tbx11k
+  image_size: 512
+  batch_size: 16
+  num_workers: 4
+  pin_memory: true
+
+model:
+  arch: resnet18
+  num_classes: 3
+  pretrained: true
+  use_flipr: true
+  keep_stages: 4  # 4 = full ResNet; 3 drops layer4; 2 drops layer3 + layer4
+
+training:
+  epochs: 30
+  lr: 1.0e-4
+  weight_decay: 1.0e-4
+  scheduler: cosine
+  precision: bf16-mixed
+  seed: 42
+  class_weights: balanced
+  log_dir: /content/drive/MyDrive/tb-classifier-runs
+  wandb_project: tb-classifier
+  wandb_run_name: flipr-resnet18-colab-001

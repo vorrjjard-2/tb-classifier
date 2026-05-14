@@ -21,6 +21,10 @@ class TBLitModule(L.LightningModule):
         class_weights: torch.Tensor | None = None,
     ):
         super().__init__()
+        # `load_from_checkpoint` will round-trip class_weights through hparams, where
+        # tensors get serialized as lists — accept either form.
+        if class_weights is not None and not isinstance(class_weights, torch.Tensor):
+            class_weights = torch.tensor(class_weights, dtype=torch.float32)
         # Hyperparameters end up in the W&B run config + checkpoint payload.
         hparams: dict = {"model": vars(model_cfg), "training": vars(training_cfg)}
         if class_weights is not None:

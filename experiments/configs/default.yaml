@@ -1,25 +1,28 @@
-name: default
+name: flipr_resnet18_npt_colab
 
 data:
-  root: data/tbx11k-classification-3-class-seed-42
+  root: data/tbx11k
   image_size: 512
   batch_size: 16
-  num_workers: 4
+  num_workers: 8
   pin_memory: true
+  augment : false
 
 model:
-  arch: resnet50
+  arch: resnet18
   num_classes: 3
-  pretrained: true
+  pretrained: false
+  use_flipr: true
+  keep_stages: 3
 
 training:
-  epochs: 30
+  epochs: 100
   lr: 1.0e-4
   weight_decay: 1.0e-4
   scheduler: cosine
-  precision: "32"
+  precision: bf16-mixed
   seed: 42
-  class_weights: balanced  # "balanced" → inverse-frequency from train counts; null → unweighted
-  log_dir: experiments/results
+  class_weights: balanced
+  log_dir: /content/drive/MyDrive/tb-classifier-runs
   wandb_project: tb-classifier
-  wandb_run_name: null
+  wandb_run_name: flipr-resnet1-npt-colab-001

@@ -49,6 +49,11 @@ def main() -> None:
         action="store_true",
         help="Run a single train+val batch for wiring sanity (no W&B run).",
     )
+    parser.add_argument(
+        "--resume",
+        default=None,
+        help="Path to a .ckpt file to resume from (restores model, optimizer, scheduler, epoch).",
+    )
     args = parser.parse_args()
 
     cfg = load_config(args.config)
@@ -81,6 +86,7 @@ def main() -> None:
             monitor="val/auroc_macro",
             mode="max",
             save_top_k=2,
+            save_last=True,
             auto_insert_metric_name=False,
         ),
     ]
@@ -96,7 +102,12 @@ def main() -> None:
         log_every_n_steps=20,
         default_root_dir=str(run_dir),
     )
-    trainer.fit(module, train_dataloaders=train_loader, val_dataloaders=val_loader)
+    trainer.fit(
+        module,
+        train_dataloaders=train_loader,
+        val_dataloaders=val_loader,
+        ckpt_path=args.resume,
+    )
 
 
 if __name__ == "__main__":

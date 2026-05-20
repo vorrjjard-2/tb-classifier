@@ -1,15 +1,17 @@
 # tb-classifier
 
-A custom 3-class chest X-ray classifier for TB detection, built for the ALIVE implementation.
-The architecture is a **3-stage-ablated ResNet18** with a **FlipR** block inserted after `layer2`, 
-a learned left–right asymmetry gate motivated by the unilateral nature of many TB findings
+Read the paper here : <insert paper>
+
+A custom 3-class chest X-ray classifier for TB detection, built for ALIVE.
+The architecture is a **3-stage-ablated ResNet18** with a custom **FlipR** block inserted after `layer2`, 
+a learned lateral asymmetry gate motivated by the unilateral nature of many TB findings
 on CXR. Trained from scratch.
 
-Classes: `healthy` · `sick-non-tb` · `tb`. Dataset: TBX11K, folder-layout.
+Classes: `healthy` · `sick-non-tb` · `tb`. 
 
-## Headline result
+## Best Epoch Results
 
-`best.ckpt` on the TBX11K test split (1260 images: 570 healthy, 570 sick-non-TB, 120 TB):
+These are the recorded results from the `test` set of TBX11K : 
 
 | Class       | Sensitivity | Specificity | AUROC  | Support |
 | ----------- | :---------: | :---------: | :----: | :-----: |
@@ -18,23 +20,21 @@ Classes: `healthy` · `sick-non-tb` · `tb`. Dataset: TBX11K, folder-layout.
 | tb          |   0.9417    |   0.9991    | 0.9984 |   120   |
 | **macro**   | **0.9770**  | **0.9939**  | **0.9988** | 1260 |
 
-Accuracy 0.9897 · macro F1 0.9834.
+Accuracy 0.9897 · macro F1 0.9834
 
 ## Reproduction
 
-Everything below uses the canonical run `experiments/configs/default.yaml`
-(seed 42, 100 epochs, cosine LR, bf16-mixed, balanced class weights, augmentations off).
+Each run is defined by a YAML config. The config used for this experiment (and the only config left present) is located at `experiments/configs/default.yaml`
 
 ### 1. Install
 
 ```bash
-uv sync                       # preferred
-# or: pip install -e .
+uv sync
 ```
 
-### 2. Get the data
+### 2. Data
 
-TBX11K, folder-layout, in `data/tbx11k/`:
+Clone your TBX11K locally. Some data parsing was done to lead to the final layout. 
 
 ```
 data/tbx11k/
@@ -43,27 +43,13 @@ data/tbx11k/
   test/ {healthy,sick-non-tb,tb}/*.png
 ```
 
-Source: <!-- TODO: fill in the exact download URL / instructions you used -->
-
-Expected counts after splitting: train 5880, val 1260, test 1260 (570 / 570 / 120 per class
-in val and test; train is upsampled to 2660 / 2660 / 560 by the splitter). Sanity-check
-with `uv run python scripts/check_data.py` — it loads each split and prints class counts
-plus a sample batch.
+Source: https://alive-research.s3.ap-southeast-1.amazonaws.com/tbx11k-bounding-box-detection.zip
 
 ### 3. Train
 
 ```bash
-uv run python scripts/train.py --config experiments/configs/default.yaml --fast-dev-run  # one batch, no W&B
-uv run python scripts/train.py --config experiments/configs/default.yaml                # real run
+uv run python scripts/train.py --config experiments/configs/default.yaml 
 ```
-
-Outputs land in `experiments/results/flipr_resnet18_k3_npt/`:
-- `checkpoints/epoch=<NN>-auroc=<X.XXX>.ckpt` — top-2 by `val/auroc_macro`
-- `checkpoints/last.ckpt` — most recent epoch
-- W&B run dir (logger writes here too)
-
-The run logs to W&B project `tb-classifier`. Set `WANDB_MODE=offline` if you don't want
-to push, or `--config <yaml-with-logger-disabled>` if you want to wire that up.
 
 To resume from a checkpoint:
 
@@ -74,52 +60,16 @@ uv run python scripts/train.py --config experiments/configs/default.yaml --resum
 ### 4. Evaluate
 
 ```bash
-uv run python scripts/evaluate.py                                                    # defaults to default.yaml + best.ckpt
-uv run python scripts/evaluate.py --ckpt experiments/results/flipr_resnet18_k3_npt/checkpoints/last.ckpt
-uv run python scripts/evaluate.py --device cpu                                       # force CPU
+uv run python scripts/evaluate.py --ckpt <path to your checkpoint>=
 ```
 
 Prints the per-class table (sensitivity / specificity / AUROC / support), the macro
-row, accuracy, the sklearn classification report, and the confusion matrix — the same
-numbers shown in the headline table above.
+row, accuracy, the sklearn classification report, and the confusion matrix.
 
-### Reproducibility notes
-
-- **Seed.** `L.seed_everything(cfg.training.seed, workers=True)` is called in
-  `scripts/train.py` before any dataloader or model is constructed. This seeds Python,
-  NumPy, PyTorch (CPU + CUDA), and Lightning worker processes.
-- **Hardware.** The reported best run was trained on a single Colab T4 in bf16-mixed.
-  Results on a different GPU / different cuDNN / different PyTorch version will land
-  *close to* but not bit-exactly equal to the headline numbers — Lightning's
-  `seed_everything` does not enable cuDNN deterministic mode (it slows training enough
-  that we left it off). Expect runs to land within a few tenths of a point of the
-  reported macro AUROC.
-- **Augmentations are off** (`data.augment: false`). The full augmentation pipeline
-  in `src/tb_classifier/data/transforms.py` is wired but disabled for the canonical
-  run — turning it on is a separate ablation, not the reproduction path.
-- **Colab.** Clone the repo, `uv sync` (or `pip install -e .`), mount Drive, then
-  edit `experiments/configs/default.yaml` to set `training.log_dir` to a Drive path
-  (e.g. `/content/drive/MyDrive/tb-classifier-runs`) before running
-  `python scripts/train.py --config experiments/configs/default.yaml`. This keeps
-  checkpoints alive across runtime disconnects.
-
-## Model
-
-Top-level model (`src/tb_classifier/models/classifier.py`) = backbone + linear head.
-There are no architecture knobs — the backbone is the project.
-
-The backbone (`src/tb_classifier/models/backbone.py`) is a torchvision **ResNet18**
-truncated to three stages, with a `FlipRBlock` between `layer2` and `layer3`:
-
-```
-conv1 → bn1 → relu → maxpool → layer1 → layer2 → flipr → layer3 → avgpool → flatten
-```
-
-`feat_dim = 256` (resnet18 `layer3` output channels). The linear head maps that to
-`num_classes`. Default is random init (`pretrained=false`); flip `model.pretrained`
-in the YAML to start from ImageNet weights instead.
 
 ### FlipRBlock
+
+This block is motivated by the use of symmetry in the detection of TB. It takes a simple difference between feature maps and their laterally-flipped counterparts, and broadcasts that difference back to the feature maps. There is some blurring done (pooling) to smooth out some slight asymmetry, since the CXRs are not guarenteed to be 100% symmetric anyway.
 
 `src/tb_classifier/models/blocks/flipr.py`. Given features `x`:
 
@@ -129,8 +79,6 @@ gate = sigmoid(conv1x1(asym))          # per-pixel scalar in (0, 1)
 out  = x * (1 + gate)                  # residual-friendly amplification
 ```
 
-Adds `C + 1` parameters total (one 1×1 conv from C to 1) and degrades to identity when
-the gate saturates at 0, so it can only help or no-op.
 
 ## Configs
 

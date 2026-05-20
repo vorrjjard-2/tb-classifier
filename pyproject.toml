@@ -13,27 +13,17 @@ dependencies = [
     "pillow",
     "pydicom",
     "numpy",
-    "pandas",
     "scikit-learn",
     "pyyaml",
     "tensorboard",
     "wandb",
-    "matplotlib",
     "tqdm",
-    "seaborn>=0.13.2",
     "einops>=0.8.2",
 ]
 
 [dependency-groups]
 dev = [
-    "pytest",
     "ruff",
-]
-notebooks = [
-    "jupyter",
-    "ipykernel",
-    "ipywidgets",
-    "seaborn",
 ]
 
 [build-system]
@@ -49,6 +39,3 @@ line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "F", "I"]
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]

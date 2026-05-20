@@ -1,4 +1,4 @@
-"""Top-level TB classifier: backbone + linear head."""
+"""TB classifier: 3-stage FlipR ResNet18 backbone + linear head."""
 
 from __future__ import annotations
 
@@ -6,36 +6,18 @@ import torch
 from torch import nn
 
 from ..config import ModelConfig
-from .backbone import build_backbone
+from .backbone import Backbone
 
 
 class TBClassifier(nn.Module):
-    def __init__(
-        self,
-        arch: str = "resnet50",
-        num_classes: int = 3,
-        pretrained: bool = True,
-        keep_stages: int = 4,
-        use_flipr: bool = False,
-    ):
+    def __init__(self, num_classes: int = 3, pretrained: bool = False):
         super().__init__()
-        self.backbone, feat_dim = build_backbone(
-            arch=arch,
-            pretrained=pretrained,
-            keep_stages=keep_stages,
-            use_flipr=use_flipr,
-        )
-        self.head = nn.Linear(feat_dim, num_classes)
+        self.backbone = Backbone(pretrained=pretrained)
+        self.head = nn.Linear(Backbone.feat_dim, num_classes)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.head(self.backbone(x))
 
 
 def build_classifier(cfg: ModelConfig) -> TBClassifier:
-    return TBClassifier(
-        arch=cfg.arch,
-        num_classes=cfg.num_classes,
-        pretrained=cfg.pretrained,
-        keep_stages=cfg.keep_stages,
-        use_flipr=cfg.use_flipr,
-    )
+    return TBClassifier(num_classes=cfg.num_classes, pretrained=cfg.pretrained)

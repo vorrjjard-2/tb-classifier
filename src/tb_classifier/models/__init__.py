@@ -1,4 +1,4 @@
-from .backbone import build_backbone
+from .backbone import Backbone
 from .classifier import TBClassifier, build_classifier
 
-__all__ = ["TBClassifier", "build_backbone", "build_classifier"]
+__all__ = ["Backbone", "TBClassifier", "build_classifier"]

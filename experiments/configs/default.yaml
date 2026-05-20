@@ -1,4 +1,8 @@
-name: flipr_resnet18_npt_colab
+# Canonical run — these hyperparameters produced `best.ckpt`. See the README's
+# "Reproduction" section for the headline test-set metrics.
+# Override `training.log_dir` if you want runs to land somewhere other than
+# `experiments/results/` (e.g. a Google Drive mount on Colab).
+name: flipr_resnet18_k3_npt
 
 data:
   root: data/tbx11k
@@ -6,14 +10,11 @@ data:
   batch_size: 16
   num_workers: 8
   pin_memory: true
-  augment : false
+  augment: false
 
 model:
-  arch: resnet18
   num_classes: 3
   pretrained: false
-  use_flipr: true
-  keep_stages: 3
 
 training:
   epochs: 100
@@ -23,6 +24,4 @@ training:
   precision: bf16-mixed
   seed: 42
   class_weights: balanced
-  log_dir: /content/drive/MyDrive/tb-classifier-runs
   wandb_project: tb-classifier
-  wandb_run_name: flipr-resnet1-npt-colab-001

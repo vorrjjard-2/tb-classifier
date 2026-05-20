@@ -18,7 +18,7 @@ import yaml
 
 @dataclass
 class DataConfig:
-    root: str = "data/tbx11k-classification-3-class-seed-42"
+    root: str = "data/tbx11k"
     image_size: int = 512
     batch_size: int = 16
     num_workers: int = 4
@@ -30,14 +30,8 @@ class DataConfig:
 
 @dataclass
 class ModelConfig:
-    arch: str = "resnet50"
     num_classes: int = 3
-    pretrained: bool = True
-    # Number of ResNet stages to keep (1..4). 4 = full ResNet; 3 drops layer4;
-    # 2 drops layer3 + layer4; 1 drops layer2 + layer3 + layer4.
-    keep_stages: int = 4
-    # Insert FlipRBlock after layer2 when True.
-    use_flipr: bool = False
+    pretrained: bool = False
 
 
 @dataclass

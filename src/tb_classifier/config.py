@@ -45,6 +45,9 @@ class TrainingConfig:
     # "balanced" → inverse-frequency from train counts; null → unweighted
     class_weights: str | None = "balanced"
     log_dir: str = "experiments/results"
+    # Optional mirror dir (e.g. a mounted Google Drive) for crash-safe checkpoints.
+    # null → checkpoints stay on local disk only.
+    drive_ckpt_dir: str | None = None
     wandb_project: str = "tb-classifier"
     wandb_run_name: str | None = None
 

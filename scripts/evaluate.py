@@ -52,6 +52,11 @@ def main() -> None:
         default="auto",
         help="Device to run inference on: 'auto' | 'cpu' | 'cuda' | 'mps'.",
     )
+    parser.add_argument(
+        "--out",
+        default=None,
+        help="Optional path to write the full metrics as JSON (e.g. a Drive folder).",
+    )
     args = parser.parse_args()
 
     cfg = load_config(args.config)
@@ -93,9 +98,13 @@ def main() -> None:
     n_classes = len(CLASS_NAMES)
     labels_onehot = np.eye(n_classes)[labels]
 
+    # One-vs-rest confusion-matrix metrics per class. For TB screening the key
+    # numbers are sensitivity (recall on a class) and specificity; PPV/NPV/F1
+    # round out the clinical picture.
     print("\n=== Per-class ===")
-    print(f"{'class':<14} {'sens':>8} {'spec':>8} {'auroc':>8} {'support':>8}")
-    sens_all, spec_all, auc_all = [], [], []
+    cols = ("sens", "spec", "ppv", "npv", "f1", "auroc", "support")
+    print(f"{'class':<14} " + " ".join(f"{c:>8}" for c in cols))
+    per_class: dict[str, dict[str, float]] = {}
     for i, name in enumerate(CLASS_NAMES):
         cls_pred = preds == i
         cls_true = labels == i
@@ -103,20 +112,44 @@ def main() -> None:
         fp = int((cls_pred & ~cls_true).sum())
         fn = int((~cls_pred & cls_true).sum())
         tn = int((~cls_pred & ~cls_true).sum())
-        sens = tp / (tp + fn) if (tp + fn) else 0.0
+        sens = tp / (tp + fn) if (tp + fn) else 0.0  # recall / sensitivity
         spec = tn / (tn + fp) if (tn + fp) else 0.0
+        ppv = tp / (tp + fp) if (tp + fp) else 0.0  # precision
+        npv = tn / (tn + fn) if (tn + fn) else 0.0
+        f1 = 2 * ppv * sens / (ppv + sens) if (ppv + sens) else 0.0
         auc = roc_auc_score(labels_onehot[:, i], probs[:, i])
-        sens_all.append(sens)
-        spec_all.append(spec)
-        auc_all.append(auc)
-        print(f"{name:<14} {sens:8.4f} {spec:8.4f} {auc:8.4f} {int(cls_true.sum()):8d}")
+        per_class[name] = {
+            "sensitivity": sens, "specificity": spec, "ppv": ppv,
+            "npv": npv, "f1": f1, "auroc": auc, "support": int(cls_true.sum()),
+        }
+        print(
+            f"{name:<14} {sens:8.4f} {spec:8.4f} {ppv:8.4f} {npv:8.4f} "
+            f"{f1:8.4f} {auc:8.4f} {int(cls_true.sum()):8d}"
+        )
 
     macro_auroc = roc_auc_score(labels_onehot, probs, multi_class="ovr", average="macro")
+    macro = {
+        m: float(np.mean([per_class[n][m] for n in CLASS_NAMES]))
+        for m in ("sensitivity", "specificity", "ppv", "npv", "f1")
+    }
+    macro["auroc"] = float(macro_auroc)
+    accuracy = float((preds == labels).mean())
     print(
-        f"{'macro':<14} {np.mean(sens_all):8.4f} {np.mean(spec_all):8.4f} "
+        f"{'macro':<14} {macro['sensitivity']:8.4f} {macro['specificity']:8.4f} "
+        f"{macro['ppv']:8.4f} {macro['npv']:8.4f} {macro['f1']:8.4f} "
         f"{macro_auroc:8.4f} {len(labels):8d}"
     )
-    print(f"\naccuracy: {(preds == labels).mean():.4f}")
+    print(f"\naccuracy: {accuracy:.4f}")
+
+    # WHO target product profile for a TB triage test: sensitivity >= 0.90,
+    # specificity >= 0.70 (https://www.who.int/publications/i/item/9789241514828).
+    tb = per_class["tb"]
+    who_ok = tb["sensitivity"] >= 0.90 and tb["specificity"] >= 0.70
+    print(
+        f"WHO triage TPP (tb sens>=0.90, spec>=0.70): "
+        f"{'PASS' if who_ok else 'FAIL'} "
+        f"(sens={tb['sensitivity']:.4f}, spec={tb['specificity']:.4f})"
+    )
 
     print("\n=== sklearn classification report ===")
     print(classification_report(labels, preds, target_names=list(CLASS_NAMES), digits=4))
@@ -128,6 +161,25 @@ def main() -> None:
     for i, name in enumerate(CLASS_NAMES):
         row = "  ".join(f"{c:>10d}" for c in cm[i])
         print(f"{name:<14}{row}")
+
+    if args.out:
+        import json
+
+        results = {
+            "config": str(args.config),
+            "ckpt": str(ckpt_path),
+            "test_size": len(labels),
+            "accuracy": accuracy,
+            "macro": macro,
+            "per_class": per_class,
+            "who_triage_tpp_pass": who_ok,
+            "confusion_matrix": cm.tolist(),
+            "class_names": list(CLASS_NAMES),
+        }
+        out_path = Path(args.out)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(json.dumps(results, indent=2))
+        print(f"\nmetrics written to: {out_path}")
 
 
 if __name__ == "__main__":

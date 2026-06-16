@@ -19,6 +19,7 @@ dependencies = [
     "wandb",
     "tqdm",
     "einops>=0.8.2",
+    "matplotlib>=3.10.9",
 ]
 
 [dependency-groups]

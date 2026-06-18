@@ -37,12 +37,12 @@ def _compute_class_weights(cfg: TrainingConfig, train_loader) -> torch.Tensor | 
     )
 
 
-def _auroc_of(path: Path) -> float:
-    """Sort key for ``<name>-auroc=0.999-epoch=NN.ckpt`` filenames."""
+def _loss_of(path: Path) -> float:
+    """Sort key for ``<name>-loss=0.12345-epoch=NN.ckpt`` filenames."""
     try:
-        return float(path.stem.split("auroc=")[1].split("-")[0])
+        return float(path.stem.split("loss=")[1].split("-")[0])
     except (IndexError, ValueError):
-        return -1.0
+        return float("inf")
 
 
 def _resolve_resume(resume: str | None, *dirs: Path) -> str | None:
@@ -63,7 +63,7 @@ def _resolve_resume(resume: str | None, *dirs: Path) -> str | None:
             return str(last)
         epoch_ckpts = list(d.glob("epoch=*.ckpt"))
         if epoch_ckpts:
-            return str(max(epoch_ckpts, key=_auroc_of))
+            return str(min(epoch_ckpts, key=_loss_of))
     print("  --resume auto: no checkpoint found, starting from scratch")
     return None
 
@@ -126,9 +126,9 @@ def main() -> None:
         DriveBackupModelCheckpoint(
             dirpath=str(ckpt_dir),
             backup_dir=backup_dir,
-            filename=f"{run_name}-auroc={{val/auroc_macro:.3f}}-epoch={{epoch:02d}}",
-            monitor="val/auroc_macro",
-            mode="max",
+            filename=f"{run_name}-loss={{val/loss:.5f}}-epoch={{epoch:02d}}",
+            monitor="val/loss",
+            mode="min",
             save_top_k=3,
             save_last=True,
             auto_insert_metric_name=False,

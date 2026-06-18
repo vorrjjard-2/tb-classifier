@@ -1,5 +1,5 @@
 
-name: flipr_resnet18_k3_npt_nonbalanced
+name: flipr_resnet18_k3_npt_nonbalanced_adam
 
 data:
   root: data/tbx11k
@@ -15,10 +15,10 @@ model:
 
 training:
   epochs: 100
-  lr: 1.0e-4
-  weight_decay: 1.0e-4
-  scheduler: cosine
-  precision: bf16-mixed
+  lr: 1.0e-3
+  weight_decay: 0.0
+  scheduler: none
+  precision: 32
   seed: 42
   class_weights: null
-  wandb_project: tb-classifier
+  wandb_project: tb-classifier-adam
